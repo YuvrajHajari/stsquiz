@@ -521,23 +521,22 @@
     width: 140px;
     height: 140px;
     border-radius: 50%;
-    border: 4px solid var(--border);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     margin: 0 auto 24px;
     position: relative;
-    background: var(--surface);
+    background: transparent;
   }
 
   .score-ring::before {
     content: '';
     position: absolute;
-    inset: -4px;
+    inset: 0;
     border-radius: 50%;
     background: conic-gradient(var(--accent) var(--pct, 0%), var(--border) 0%);
-    z-index: -1;
+    z-index: 0;
   }
 
   .score-ring::after {
@@ -926,6 +925,9 @@ function buildGrid(containerId, selectedSet, updateFn) {
     card.onclick = () => toggleChapter(i, containerId, selectedSet, updateFn);
     grid.appendChild(card);
   });
+
+  // Sync initial visual state with loaded selectedSet
+  refreshGrid(containerId, selectedSet);
 }
 
 function toggleChapter(i, containerId, selectedSet, updateFn) {
