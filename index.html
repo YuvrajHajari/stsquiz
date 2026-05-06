@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuizMeDdy</title>
+<script src="questions.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: #2a2a3a;
+    --accent: #7c6aff;
+    --accent2: #ff6a9e;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --green: #4ade80;
+    --red: #f87171;
+    --yellow: #fbbf24;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* noise overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 clamp(16px, 4vw, 48px);
+  }
+
+  .header-inner {
+    max-width: 1100px;
+    margin: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+  }
+
+  .logo {
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+  }
+
+  .tab-nav {
+    display: flex;
+    gap: 4px;
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 4px;
+    border: 1px solid var(--border);
+  }
+
+  .tab-btn {
+    padding: 6px 20px;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+
+  .tab-btn.active {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 0 20px rgba(124,106,255,0.4);
+  }
+
+  /* ── MAIN ── */
+  main {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: auto;
+    padding: clamp(20px,4vw,48px) clamp(16px,4vw,48px);
+  }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── CHAPTER SELECTION ── */
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .section-title {
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-bottom: 4px;
+  }
+
+  .section-sub {
+    color: var(--muted);
+    font-size: 0.88rem;
+    margin-bottom: 28px;
+  }
+
+  .chapter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .chapter-card {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.18s;
+    user-select: none;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .chapter-card:hover {
+    border-color: var(--accent);
+    background: var(--surface2);
+    transform: translateY(-1px);
+  }
+
+  .chapter-card.selected {
+    border-color: var(--accent);
+    background: rgba(124,106,255,0.08);
+  }
+
+  .chapter-card.selected .chapter-check { background: var(--accent); border-color: var(--accent); }
+  .chapter-card.selected .chapter-check::after { display: block; }
+
+  .chapter-check {
+    width: 18px; height: 18px;
+    min-width: 18px;
+    border-radius: 5px;
+    border: 2px solid var(--border);
+    background: transparent;
+    margin-top: 2px;
+    transition: all 0.15s;
+    position: relative;
+  }
+
+  .chapter-check::after {
+    content: '';
+    display: none;
+    position: absolute;
+    top: 1px; left: 4px;
+    width: 6px; height: 10px;
+    border: 2px solid white;
+    border-top: none;
+    border-left: none;
+    transform: rotate(40deg);
+  }
+
+  .chapter-info { flex: 1; min-width: 0; }
+
+  .chapter-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: 3px;
+  }
+
+  .chapter-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+  }
+
+  .all-card {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, rgba(124,106,255,0.1), rgba(255,106,158,0.08));
+    border-color: rgba(124,106,255,0.4);
+  }
+
+  .all-card .chapter-name { font-size: 0.9rem; font-weight: 700; }
+
+  .controls-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .selected-info {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  .selected-info span { color: var(--accent); font-weight: 500; }
+
+  .btn-start {
+    padding: 12px 32px;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: all 0.2s;
+    box-shadow: 0 0 24px rgba(124,106,255,0.3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-start:hover { transform: translateY(-2px); box-shadow: 0 0 32px rgba(124,106,255,0.5); }
+  .btn-start:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* ── PRACTICE VIEW ── */
+  .practice-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .back-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .back-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .progress-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  .progress-text b { color: var(--text); }
+
+  /* practice question */
+  .q-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: clamp(20px, 4vw, 36px);
+    margin-bottom: 16px;
+    animation: fadeIn 0.25s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .q-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+  }
+
+  .q-topic {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    margin-bottom: 14px;
+  }
+
+  .q-text {
+    font-size: clamp(0.95rem, 2vw, 1.1rem);
+    font-weight: 600;
+    line-height: 1.55;
+    margin-bottom: 20px;
+  }
+
+  .options-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .option {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    transition: all 0.15s;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+
+  .option.correct {
+    border-color: var(--green);
+    background: rgba(74,222,128,0.08);
+    color: var(--green);
+  }
+
+  .option-letter {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 500;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 5px;
+    border: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+    flex-shrink: 0;
+  }
+
+  .option.correct .option-letter {
+    background: var(--green);
+    border-color: var(--green);
+    color: #0a0a0f;
+    font-weight: 700;
+  }
+
+  .practice-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .nav-btn {
+    padding: 10px 24px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .nav-btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    box-shadow: 0 0 16px rgba(124,106,255,0.3);
+  }
+
+  .nav-btn.primary:hover { box-shadow: 0 0 24px rgba(124,106,255,0.5); }
+
+  /* ── TEST VIEW ── */
+  .test-q-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: clamp(20px, 4vw, 36px);
+    margin-bottom: 16px;
+  }
+
+  .test-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    user-select: none;
+  }
+
+  .test-option:hover { border-color: var(--accent); background: rgba(124,106,255,0.06); }
+
+  .test-option.selected {
+    border-color: var(--accent);
+    background: rgba(124,106,255,0.1);
+  }
+
+  .test-option.selected .option-letter {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    font-weight: 700;
+  }
+
+  /* results */
+  .result-option.wrong-pick {
+    border-color: var(--red);
+    background: rgba(248,113,113,0.08);
+    color: var(--red);
+  }
+
+  .result-option.wrong-pick .option-letter {
+    background: var(--red);
+    border-color: var(--red);
+    color: white;
+    font-weight: 700;
+  }
+
+  .result-option.correct-ans {
+    border-color: var(--green);
+    background: rgba(74,222,128,0.08);
+    color: var(--green);
+  }
+
+  .result-option.correct-ans .option-letter {
+    background: var(--green);
+    border-color: var(--green);
+    color: #0a0a0f;
+    font-weight: 700;
+  }
+
+  /* submit bar */
+  .submit-bar {
+    position: sticky;
+    bottom: 0;
+    background: rgba(10,10,15,0.9);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border);
+    padding: 14px clamp(16px,4vw,48px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    z-index: 50;
+    margin: 0 calc(-1 * clamp(16px,4vw,48px));
+  }
+
+  .answered-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  .answered-count b { color: var(--text); }
+
+  /* Score screen */
+  .score-screen {
+    text-align: center;
+    padding: 40px 20px;
+    animation: fadeIn 0.4s ease;
+  }
+
+  .score-ring {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    border: 4px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+    position: relative;
+    background: var(--surface);
+  }
+
+  .score-ring::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    background: conic-gradient(var(--accent) var(--pct, 0%), var(--border) 0%);
+    z-index: -1;
+  }
+
+  .score-ring::after {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    background: var(--surface);
+    z-index: 0;
+  }
+
+  .score-num { font-size: 2rem; font-weight: 800; z-index: 1; }
+  .score-denom { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--muted); z-index: 1; }
+
+  .score-headline {
+    font-size: clamp(1.3rem, 3vw, 1.8rem);
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+
+  .score-sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 32px; }
+
+  .review-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-align: left;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .review-title .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    background: rgba(248,113,113,0.15);
+    color: var(--red);
+    border: 1px solid rgba(248,113,113,0.3);
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  /* scrollable questions in test */
+  .test-questions-wrap {
+    padding-bottom: 80px;
+  }
+
+  /* ── POPUP ── */
+  .popup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .popup-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .popup-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px;
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    transform: translateY(20px);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .popup-overlay.show .popup-card {
+    transform: translateY(0);
+  }
+  .popup-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+  .popup-sub {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-bottom: 24px;
+    line-height: 1.4;
+  }
+  .popup-qr {
+    width: 100%;
+    max-width: 280px;
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    margin: 0 auto 24px;
+    display: block;
+  }
+  .popup-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+  .popup-actions button {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .chapter-grid { grid-template-columns: 1fr 1fr; }
+    .tab-btn { padding: 6px 14px; font-size: 0.8rem; }
+    .submit-bar { padding: 12px 16px; }
+  }
+
+  @media (max-width: 380px) {
+    .chapter-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── DIVIDER ── */
+  .chapter-group-label {
+    grid-column: 1 / -1;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 4px 0 2px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2px;
+    margin-top: 6px;
+  }
+
+  .no-wrongs {
+    text-align: center;
+    padding: 40px;
+    color: var(--green);
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      QuizMeDdy
+    </div>
+    <nav class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('practice')">Practice</button>
+      <button class="tab-btn" onclick="switchTab('test')">Test</button>
+      <button class="tab-btn" onclick="switchTab('support')">Support</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <!-- ══ PRACTICE: chapter select ══ -->
+  <div id="practice-select" class="screen active">
+    <div class="section-label">Practice Mode</div>
+    <h1 class="section-title">Choose Chapters</h1>
+    <p class="section-sub">Questions shown with correct answers highlighted — no selection needed.</p>
+    <div class="chapter-grid" id="practice-chapter-grid"></div>
+    <div class="controls-row">
+      <div class="selected-info" id="practice-sel-info">Select chapters to begin</div>
+      <button class="btn-start" id="practice-start-btn" onclick="startPractice()" disabled>
+        Start Practice →
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ PRACTICE: questions ══ -->
+  <div id="practice-view" class="screen">
+    <div class="practice-header">
+      <button class="back-btn" onclick="backToSelect('practice')">← Back</button>
+      <div class="progress-text">Practice — <b id="pq-total">0</b> questions</div>
+    </div>
+    <div class="test-questions-wrap" id="pq-list"></div>
+  </div>
+
+  <!-- ══ TEST: chapter select ══ -->
+  <div id="test-select" class="screen">
+    <div class="section-label">Test Mode</div>
+    <h1 class="section-title">Choose Chapters</h1>
+    <p class="section-sub">Questions & options shuffled. Choose answers, then submit for score.</p>
+    <div class="chapter-grid" id="test-chapter-grid"></div>
+    <div class="controls-row">
+      <div class="selected-info" id="test-sel-info">Select chapters to begin</div>
+      <button class="btn-start" id="test-start-btn" onclick="startTest()" disabled>
+        Start Test →
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ TEST: questions ══ -->
+  <div id="test-view" class="screen">
+    <div class="practice-header">
+      <button class="back-btn" onclick="backToSelect('test')">← Back</button>
+      <div class="progress-text">Test — <b id="tq-total">0</b> questions</div>
+    </div>
+    <div class="test-questions-wrap" id="tq-list"></div>
+    <div class="submit-bar">
+      <div class="answered-count">Answered: <b id="tq-answered">0</b> / <b id="tq-total2">0</b></div>
+      <button class="btn-start" onclick="submitTest()">Submit →</button>
+    </div>
+  </div>
+
+  <!-- ══ SUPPORT: screen ══ -->
+  <div id="support-select" class="screen">
+    <div class="score-screen" style="margin-top: 20px;">
+      <h1 class="section-title">Support the Creator</h1>
+      <p class="section-sub" style="margin-bottom: 32px;">If you find this tool useful, consider supporting financially.</p>
+      <img src="qr.jpg" alt="Support QR Code" class="popup-qr" style="margin: 0 auto;">
+    </div>
+  </div>
+
+  <!-- ══ TEST: results ══ -->
+  <div id="test-results" class="screen">
+    <div class="score-screen">
+      <div class="score-ring" id="score-ring">
+        <div class="score-num" id="score-num">0</div>
+        <div class="score-denom" id="score-denom">/ 0</div>
+      </div>
+      <div class="score-headline" id="score-headline">Good try!</div>
+      <div class="score-sub" id="score-sub">Here's your breakdown</div>
+    </div>
+    <div class="review-title">
+      Wrong Answers
+      <span class="badge" id="wrong-count-badge">0</span>
+    </div>
+    <div id="wrong-list"></div>
+    <div style="margin-top:24px; text-align:center;">
+      <button class="btn-start" onclick="backToSelect('test')" style="margin:auto;">Try Again →</button>
+    </div>
+  </div>
+
+</main>
+
+<!-- ══ POPUP ══ -->
+<div class="popup-overlay" id="support-popup">
+  <div class="popup-card">
+    <h2 class="popup-title">Support the Creator</h2>
+    <p class="popup-sub">If you find this tool useful, consider supporting financially.</p>
+    <img src="qr.jpg" alt="Support QR Code" class="popup-qr">
+    <div class="popup-actions">
+      <button class="nav-btn" onclick="closePopup('later')">Later</button>
+      <button class="btn-start" onclick="closePopup('done')">Done ✓</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  CHAPTERS definition
+// ─────────────────────────────────────────────
+const CHAPTERS = [
+  { name: "Loop Detection in Linked List",     start: 0,   end: 9   },
+  { name: "Sort the Bitonic Doubly Linked List",start: 10,  end: 19  },
+  { name: "Segregate Even & Odd Nodes",         start: 20,  end: 29  },
+  { name: "Merge Sort for Doubly Linked List",  start: 30,  end: 39  },
+  { name: "Minimum Stack",                      start: 40,  end: 49  },
+  { name: "The Celebrity Problem",              start: 50,  end: 59  },
+  { name: "Iterative Tower of Hanoi",           start: 60,  end: 69  },
+  { name: "Stock Span Problem",                 start: 70,  end: 79  },
+  { name: "Priority Queue Using DLL",           start: 80,  end: 89  },
+  { name: "Sort Without Extra Space (LL)",      start: 90,  end: 99  },
+  { name: "Max Sliding Window",                 start: 100, end: 109 },
+  { name: "Stack Permutations",                 start: 110, end: 119 },
+  { name: "Types of Set in Java",               start: 120, end: 139 },
+  { name: "Recover the BST",                    start: 140, end: 149 },
+  { name: "Views of Tree",                      start: 150, end: 159 },
+  { name: "Breadth-First Search (BFS)",         start: 160, end: 169 },
+  { name: "Depth-First Search (DFS)",           start: 170, end: 179 },
+  { name: "Binomial Heap",                      start: 180, end: 189 },
+  { name: "Winner Tree",                        start: 190, end: 199 },
+  { name: "Bellman-Ford Algorithm",             start: 200, end: 209 },
+  { name: "Dial's Algorithm",                   start: 210, end: 219 },
+  { name: "Topological Sort",                   start: 220, end: 229 },
+  { name: "Vertical Order Traversal",           start: 230, end: 239 },
+  { name: "Boundary Traversal",                 start: 240, end: 249 },
+  { name: "Heap Sort",                          start: 250, end: 259 },
+  { name: "K-Array Heap",                       start: 260, end: 269 },
+  { name: "Fibonacci Sequence (DP)",            start: 270, end: 279 },
+  { name: "HashMap to TreeMap Conversion",      start: 280, end: 289 },
+  { name: "Longest Increasing Subsequence",     start: 290, end: 299 },
+  { name: "Longest Bitonic Subsequence",        start: 300, end: 309 },
+  { name: "Distribution Constraints",           start: 310, end: 319 },
+  { name: "Subset Sum Problem",                 start: 320, end: 329 },
+  { name: "Longest Palindromic Subsequence",    start: 330, end: 339 },
+];
+
+const LETTERS = ['A','B','C','D','E','F'];
+
+// ─────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────
+let practiceSelected = new Set();
+let testSelected = new Set();
+let practiceQs = [];
+let pqIndex = 0;
+let testQs = []; // { q, shuffledOptions, correctShuffledIdx }
+let testAnswers = {}; // index → selected shuffled option idx
+
+function saveState() {
+  const activeTabEl = document.querySelector('.tab-btn.active');
+  const activeTab = activeTabEl ? (activeTabEl.textContent.trim().toLowerCase() === 'practice' ? 'practice' : 'test') : 'practice';
+  const activeScreenEl = document.querySelector('.screen.active');
+  const activeScreen = activeScreenEl ? activeScreenEl.id : 'practice-select';
+
+  const state = {
+    activeTab,
+    activeScreen,
+    practiceSelected: Array.from(practiceSelected),
+    testSelected: Array.from(testSelected),
+    practiceQs,
+    pqIndex,
+    testQs,
+    testAnswers
+  };
+  localStorage.setItem('dsaQuizState', JSON.stringify(state));
+}
+
+// ─────────────────────────────────────────────
+//  TAB SWITCHING
+// ─────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) =>
+    b.classList.toggle('active', 
+      (i===0&&tab==='practice') || 
+      (i===1&&tab==='test') || 
+      (i===2&&tab==='support')
+    )
+  );
+  if (tab === 'practice') showScreen('practice-select');
+  else if (tab === 'test') showScreen('test-select');
+  else if (tab === 'support') showScreen('support-select');
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+  saveState();
+}
+
+// ─────────────────────────────────────────────
+//  BUILD CHAPTER GRIDS
+// ─────────────────────────────────────────────
+function buildGrid(containerId, selectedSet, updateFn) {
+  const grid = document.getElementById(containerId);
+  grid.innerHTML = '';
+
+  // ALL card
+  const allCard = document.createElement('div');
+  allCard.className = 'chapter-card all-card';
+  allCard.id = containerId + '-all';
+  allCard.innerHTML = `
+    <div class="chapter-check" id="${containerId}-all-chk"></div>
+    <div class="chapter-info">
+      <div class="chapter-name">✦ ALL Chapters</div>
+      <div class="chapter-count">${questions.length} questions</div>
+    </div>`;
+  allCard.onclick = () => toggleAll(containerId, selectedSet, updateFn);
+  grid.appendChild(allCard);
+
+  CHAPTERS.forEach((ch, i) => {
+    const count = ch.end - ch.start + 1;
+    const card = document.createElement('div');
+    card.className = 'chapter-card';
+    card.id = `${containerId}-ch-${i}`;
+    card.innerHTML = `
+      <div class="chapter-check" id="${containerId}-chk-${i}"></div>
+      <div class="chapter-info">
+        <div class="chapter-name">${ch.name}</div>
+        <div class="chapter-count">${count} questions · ${ch.start}–${ch.end}</div>
+      </div>`;
+    card.onclick = () => toggleChapter(i, containerId, selectedSet, updateFn);
+    grid.appendChild(card);
+  });
+}
+
+function toggleChapter(i, containerId, selectedSet, updateFn) {
+  if (selectedSet.has(i)) selectedSet.delete(i);
+  else selectedSet.add(i);
+  refreshGrid(containerId, selectedSet);
+  updateFn();
+  saveState();
+}
+
+function toggleAll(containerId, selectedSet, updateFn) {
+  if (selectedSet.size === CHAPTERS.length) {
+    selectedSet.clear();
+  } else {
+    CHAPTERS.forEach((_,i) => selectedSet.add(i));
+  }
+  refreshGrid(containerId, selectedSet);
+  updateFn();
+  saveState();
+}
+
+function refreshGrid(containerId, selectedSet) {
+  const allSelected = selectedSet.size === CHAPTERS.length;
+  const allCard = document.getElementById(containerId+'-all');
+  const allChk = document.getElementById(containerId+'-all-chk');
+  allCard.classList.toggle('selected', allSelected);
+  allChk.classList.toggle('selected-chk', allSelected); // handled by card
+
+  CHAPTERS.forEach((_,i) => {
+    const card = document.getElementById(`${containerId}-ch-${i}`);
+    card.classList.toggle('selected', selectedSet.has(i));
+  });
+}
+
+function getSelectedQs(selectedSet) {
+  let qs = [];
+  CHAPTERS.forEach((ch, i) => {
+    if (selectedSet.has(i)) {
+      for (let j = ch.start; j <= ch.end && j < questions.length; j++) {
+        qs.push(questions[j]);
+      }
+    }
+  });
+  return qs;
+}
+
+function countSelectedQs(selectedSet) {
+  let n = 0;
+  selectedSet.forEach(i => {
+    const ch = CHAPTERS[i];
+    n += Math.min(ch.end, questions.length-1) - ch.start + 1;
+  });
+  return n;
+}
+
+// ─────────────────────────────────────────────
+//  PRACTICE
+// ─────────────────────────────────────────────
+function updatePracticeInfo() {
+  const n = countSelectedQs(practiceSelected);
+  const info = document.getElementById('practice-sel-info');
+  const btn = document.getElementById('practice-start-btn');
+  if (practiceSelected.size === 0) {
+    info.innerHTML = 'Select chapters to begin';
+    btn.disabled = true;
+  } else {
+    info.innerHTML = `<span>${practiceSelected.size}</span> chapter${practiceSelected.size>1?'s':''} · <span>${n}</span> questions`;
+    btn.disabled = false;
+  }
+}
+
+function startPractice() {
+  practiceQs = getSelectedQs(practiceSelected);
+  pqIndex = 0;
+  showScreen('practice-view');
+  renderPracticeQs();
+}
+
+function renderPracticeQs() {
+  document.getElementById('pq-total').textContent = practiceQs.length;
+
+  const list = document.getElementById('pq-list');
+  list.innerHTML = practiceQs.map((q, qi) => {
+    const optionsHtml = q.options.map((opt, i) => `
+      <div class="option ${i === q.answer ? 'correct' : ''}">
+        <div class="option-letter">${LETTERS[i]}</div>
+        <div>${opt}</div>
+      </div>`).join('');
+
+    return `
+      <div class="q-card">
+        <div class="q-number">Q${qi+1} / ${practiceQs.length}</div>
+        <div class="q-topic">${q.topic || ''}</div>
+        <div class="q-text">${q.question}</div>
+        <div class="options-list">${optionsHtml}</div>
+      </div>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────
+//  TEST
+// ─────────────────────────────────────────────
+function updateTestInfo() {
+  const n = countSelectedQs(testSelected);
+  const info = document.getElementById('test-sel-info');
+  const btn = document.getElementById('test-start-btn');
+  if (testSelected.size === 0) {
+    info.innerHTML = 'Select chapters to begin';
+    btn.disabled = true;
+  } else {
+    info.innerHTML = `<span>${testSelected.size}</span> chapter${testSelected.size>1?'s':''} · <span>${n}</span> questions`;
+    btn.disabled = false;
+  }
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function startTest() {
+  const rawQs = getSelectedQs(testSelected);
+  const shuffledRaw = shuffle(rawQs);
+
+  testQs = shuffledRaw.map(q => {
+    const correctText = q.options[q.answer];
+    const shuffledOptions = shuffle(q.options);
+    const correctShuffledIdx = shuffledOptions.indexOf(correctText);
+    return { q, shuffledOptions, correctShuffledIdx };
+  });
+  testAnswers = {};
+
+  document.getElementById('tq-total').textContent = testQs.length;
+  document.getElementById('tq-total2').textContent = testQs.length;
+  document.getElementById('tq-answered').textContent = '0';
+
+  renderTestQs();
+  showScreen('test-view');
+}
+
+function renderTestQs() {
+  const list = document.getElementById('tq-list');
+  list.innerHTML = testQs.map((item, qi) => {
+    const optionsHtml = item.shuffledOptions.map((opt, oi) => `
+      <div class="test-option" id="topt-${qi}-${oi}" onclick="selectTestAnswer(${qi},${oi})">
+        <div class="option-letter">${LETTERS[oi]}</div>
+        <div>${opt}</div>
+      </div>`).join('');
+    return `
+      <div class="test-q-card">
+        <div class="q-number">Q${qi+1} / ${testQs.length}</div>
+        <div class="q-topic">${item.q.topic || ''}</div>
+        <div class="q-text">${item.q.question}</div>
+        <div class="options-list" style="gap:8px">${optionsHtml}</div>
+      </div>`;
+  }).join('');
+}
+
+function selectTestAnswer(qi, oi) {
+  // deselect previous
+  if (testAnswers[qi] !== undefined) {
+    const prev = document.getElementById(`topt-${qi}-${testAnswers[qi]}`);
+    if (prev) prev.classList.remove('selected');
+  }
+  testAnswers[qi] = oi;
+  document.getElementById(`topt-${qi}-${oi}`).classList.add('selected');
+  document.getElementById('tq-answered').textContent = Object.keys(testAnswers).length;
+  saveState();
+}
+
+function submitTest() {
+  let score = 0;
+  const wrongs = [];
+
+  testQs.forEach((item, qi) => {
+    const picked = testAnswers[qi]; // may be undefined
+    const correct = item.correctShuffledIdx;
+    if (picked === correct) {
+      score++;
+    } else {
+      wrongs.push({ item, qi, picked, correct });
+    }
+  });
+
+  const total = testQs.length;
+  const pct = Math.round((score/total)*100);
+
+  // score ring
+  const ring = document.getElementById('score-ring');
+  ring.style.setProperty('--pct', `${pct}%`);
+  document.getElementById('score-num').textContent = score;
+  document.getElementById('score-denom').textContent = `/ ${total}`;
+  document.getElementById('score-headline').textContent =
+    pct===100 ? '🎉 Perfect Score!' : pct>=80 ? '🔥 Great Job!' : pct>=60 ? '📚 Keep Going!' : '💪 More Practice!';
+  document.getElementById('score-sub').textContent = `${pct}% · ${score} correct out of ${total}`;
+  document.getElementById('wrong-count-badge').textContent = wrongs.length;
+
+  // wrong list
+  const wrongList = document.getElementById('wrong-list');
+  if (wrongs.length === 0) {
+    wrongList.innerHTML = '<div class="no-wrongs">No wrong answers — flawless! ✦</div>';
+  } else {
+    wrongList.innerHTML = wrongs.map(({ item, qi, picked, correct }) => {
+      const optHtml = item.shuffledOptions.map((opt, oi) => {
+        let cls = 'option result-option';
+        if (oi === correct) cls += ' correct-ans';
+        else if (oi === picked) cls += ' wrong-pick';
+        return `<div class="${cls}">
+          <div class="option-letter">${LETTERS[oi]}</div>
+          <div>${opt}</div>
+        </div>`;
+      }).join('');
+      return `<div class="q-card" style="margin-bottom:14px">
+        <div class="q-number">Q${qi+1}</div>
+        <div class="q-topic">${item.q.topic||''}</div>
+        <div class="q-text">${item.q.question}</div>
+        <div class="options-list" style="gap:8px">${optHtml}</div>
+      </div>`;
+    }).join('');
+  }
+
+  showScreen('test-results');
+}
+
+// ─────────────────────────────────────────────
+//  BACK
+// ─────────────────────────────────────────────
+function backToSelect(mode) {
+  if (mode === 'practice') {
+    practiceQs = [];
+    pqIndex = 0;
+  } else if (mode === 'test') {
+    testQs = [];
+    testAnswers = {};
+  }
+  showScreen(mode+'-select');
+}
+
+// ─────────────────────────────────────────────
+//  POPUP
+// ─────────────────────────────────────────────
+function closePopup(action) {
+  document.getElementById('support-popup').classList.remove('show');
+  if (action === 'done') {
+    localStorage.setItem('dsaQuizSupportDone', 'true');
+  } else {
+    sessionStorage.setItem('dsaQuizSupportLater', 'true');
+  }
+}
+
+// ─────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('dsaQuizState');
+  let restored = null;
+  if (saved) {
+    try {
+      const state = JSON.parse(saved);
+      practiceSelected = new Set(state.practiceSelected || []);
+      testSelected = new Set(state.testSelected || []);
+      practiceQs = state.practiceQs || [];
+      pqIndex = state.pqIndex || 0;
+      testQs = state.testQs || [];
+      testAnswers = state.testAnswers || {};
+      restored = { 
+        tab: state.activeTab || 'practice', 
+        screen: state.activeScreen || 'practice-select' 
+      };
+    } catch (e) {
+      console.error("Failed to load state", e);
+    }
+  }
+
+  buildGrid('practice-chapter-grid', practiceSelected, updatePracticeInfo);
+  buildGrid('test-chapter-grid', testSelected, updateTestInfo);
+  updatePracticeInfo();
+  updateTestInfo();
+
+  if (restored) {
+    document.querySelectorAll('.tab-btn').forEach((b,i) =>
+      b.classList.toggle('active', 
+        (i===0&&restored.tab==='practice') || 
+        (i===1&&restored.tab==='test') || 
+        (i===2&&restored.tab==='support')
+      )
+    );
+    
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const activeScreenEl = document.getElementById(restored.screen);
+    if (activeScreenEl) activeScreenEl.classList.add('active');
+    
+    if (restored.screen === 'practice-view' && practiceQs.length > 0) {
+      renderPracticeQs();
+    } else if (restored.screen === 'test-view' && testQs.length > 0) {
+      document.getElementById('tq-total').textContent = testQs.length;
+      document.getElementById('tq-total2').textContent = testQs.length;
+      renderTestQs();
+      Object.keys(testAnswers).forEach(qi => {
+        const oi = testAnswers[qi];
+        const el = document.getElementById(`topt-${qi}-${oi}`);
+        if (el) el.classList.add('selected');
+      });
+      document.getElementById('tq-answered').textContent = Object.keys(testAnswers).length;
+    } else if (restored.screen === 'test-results' && testQs.length > 0) {
+      submitTest(); 
+    } else if (restored.screen === 'support-select') {
+      showScreen('support-select');
+    } else if (['practice-view', 'test-view', 'test-results'].includes(restored.screen)) {
+      showScreen(restored.tab + '-select');
+    }
+  }
+
+  // Show popup logic
+  if (!localStorage.getItem('dsaQuizSupportDone') && !sessionStorage.getItem('dsaQuizSupportLater')) {
+    setTimeout(() => {
+      document.getElementById('support-popup').classList.add('show');
+    }, 600);
+  }
+});
+</script>
+</body>
+</html>
